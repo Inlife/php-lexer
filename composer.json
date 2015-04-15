@@ -1,0 +1,15 @@
+{
+    "name": "inlife/php-lexer",
+    "authors": [
+        {
+            "name": "Vladislav Gritsenko",
+            "email": "Vladgritsenko@gmail.com"
+        }
+    ],
+    "require": {
+        "yohang/finite": "~1.0"
+    },
+    "autoload": {
+        "psr-4": {"phpLexer\\": "src/php-lexer"}
+    }
+}
