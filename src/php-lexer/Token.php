@@ -22,4 +22,9 @@ class Token {
     {
         return $this->type;
     }
+
+    public function toString()
+    {
+        return "<" . $this->getData() . ", " . $this->getType() . ">";
+    }
 }

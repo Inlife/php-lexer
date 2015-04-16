@@ -51,9 +51,11 @@ class Expression implements StatefulInterface
         return $this->data;
     }
 
-    public function complete()
+    public function complete(Symbol $symbol)
     {
-        if ($this->getFiniteState() !== 'empty') {
+        if (!in_array($this->state, ['empty', 'string_opened', 'comment'])) {
+            $this->generateToken();
+        } else if ($this->state === 'comment' && $symbol->isEOL()) {
             $this->generateToken();
         }
     }
@@ -110,7 +112,7 @@ class Expression implements StatefulInterface
 
             $this->reset();
         } else {
-            $this->call('error', ['Can\'t complete token.']);
+            $this->call('error', ['Can\'t complete token.', $this, [], $this->symbols]);
         }
     }
 

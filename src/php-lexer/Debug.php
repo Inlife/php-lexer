@@ -49,6 +49,16 @@ class Debug {
         ;
     }
 
+    public function type($type)
+    {
+        $this->tab()->write("found $type: ");
+    }
+
+    public function value(Symbol $symbol)
+    {
+        $this->writeln($symbol->getData());
+    }
+
     public function error($data)
     {
         $symbol = end($data[3]);
@@ -75,10 +85,5 @@ class Debug {
                 ->write($token->getType())
                 ->writeln('>')
         ;
-    }
-
-    public function type($type)
-    {
-        $this->tab()->writeln("found type: $type");
     }
 }

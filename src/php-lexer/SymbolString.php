@@ -6,10 +6,12 @@ class SymbolString {
 
     private $data;
     private $line;
+    private $length;
 
     public function __construct($string, $line)
     {
         $this->data = str_split($string);
+        $this->length = strlen($string);
         $this->line = $line;
     }
 
@@ -31,5 +33,10 @@ class SymbolString {
     public function toString()
     {
         return implode('', $this->data);
+    }
+
+    public function getLength()
+    {
+        return $this->length;
     }
 }

@@ -20,9 +20,10 @@ class Symbol {
             T_SPACE         => function($symbol) { return ($symbol === ' '); },
             T_LETTER        => function($symbol) { return ( ($symbol >= 'a' && $symbol <= 'z') || ($symbol >= 'A' && $symbol <= 'Z') || ($symbol === '_') ); },
             T_NUMBER        => function($symbol) { return ($symbol >= '0' && $symbol <= '9'); },
-            T_SPECIAL       => function($symbol) { return in_array($symbol, str_split('$.')); },
+            T_SPECIAL       => function($symbol) { return in_array($symbol, str_split('$./')); },
             T_OPERATOR      => function($symbol) { return in_array($symbol, str_split('+-/*<>=^!.&|')); },
             T_PUNCTUATION   => function($symbol) { return in_array($symbol, str_split('{}[](),:;')); },
+            T_STRING        => function($symbol) { return in_array($symbol, str_split('\'"')); },
         ];
     }
     
@@ -45,6 +46,11 @@ class Symbol {
         }
 
         return $this;
+    }
+
+    public function isEOL()
+    {
+        return ($this->getColumn() === $this->getString()->getLength());
     }
 
     public function getData()

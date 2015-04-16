@@ -13,21 +13,23 @@ define('T_NUMBER',      4);
 define('T_OPERATOR',    5);
 define('T_PUNCTUATION', 6);
 define('T_SPECIAL',     7);
+// define('T_STRING',      8); // already defined in php
 
 class Lexer
 {
     private $tokens;
     private $scheme;
-    private $debug = DBG_ALL;
+    private $debug = DBG_ERROR;
 
-    public function __construct($input) 
+    public function __construct($input, $debug = DBG_ERROR) 
     {
+        $this->debug = $debug;
         $this->scheme = [
             'class'   => 'Expression',
 
             'states'  => [
                 'empty'         => [ 'type' => 'initial'],
-                'correct'       => [ 'type' => 'final'  ],
+                // 'correct'       => [ 'type' => 'final'  ],
                 'incorrect'     => [ 'type' => 'final'  ],
 
                 'integer'       => [], 
@@ -39,6 +41,9 @@ class Lexer
                     // sub states
                     'identifier_dollar' => [],
                     'identifier_start'  => [],
+                'string'        => [],
+                    'string_opened'     => [],
+                'comment'       => [],
             ],
 
             'transitions' => [
@@ -52,9 +57,14 @@ class Lexer
                 'identifier' => ['from' => ['identifier_start', 'identifier'], 'to' => 'identifier'],
                 'identifier_start' => ['from' => ['empty', 'identifier_dollar', 'identifier'], 'to' => 'identifier'],
                 'identifier_dollar' => ['from' => ['empty', 'identifier_dollar'], 'to' => 'identifier'],
+                'string_start' => ['from' => ['empty'], 'to' => 'string_opened'],
+                'string_concat' => ['from' => ['string_opened'], 'to' => 'string_opened'],
+                'string_finish' => ['from' => ['string_opened'], 'to' => 'string'],
+                'comment_start' => ['from' => ['uoperator'], 'to' => 'comment'],
+                'comment' => ['from' => ['comment'], 'to' => 'comment'],
 
-                'confirm'       => ['from' => ['integer', 'double', 'uoperator', 'boperator', 'punctuation', 'identifier', 'variable'], 'to' => 'empty'],
-                'reject'        => ['from' => ['integer', 'double', 'uoperator', 'boperator', 'punctuation', 'identifier', 'variable'], 'to' => 'incorrect'],
+                'confirm'       => ['from' => ['integer', 'double', 'uoperator', 'boperator', 'punctuation', 'identifier', 'variable', 'string', 'comment'], 'to' => 'empty'],
+                'reject'        => ['from' => ['integer', 'double', 'uoperator', 'boperator', 'punctuation', 'identifier', 'variable', 'string', 'comment'], 'to' => 'incorrect'],
             ],
         ];
 
@@ -99,16 +109,16 @@ class Lexer
                 ->is(T_ALL, function($iteration) use($debug, $expression) {
                     $debug->start($iteration, $expression);
                 })
-                ->is(T_SPACE, function() use($debug, $expression) {
+                ->is(T_SPACE, function() use($debug, $expression, $symbol) {
                     $debug->type('space or endline');
 
-                    $expression->complete();
+                    $expression->complete($symbol);
                 })
                 ->is(T_LETTER, function() use($debug, $expression) {
                     $debug->type('letter');
 
                     $expression->transition(
-                        ['identifier_start', 'identifier'],
+                        ['identifier_start', 'identifier', 'string_concat', 'comment'],
                         ['uoperator', 'boperator', 'punctuation']
                     );
                 })
@@ -116,7 +126,7 @@ class Lexer
                     $debug->type('number');
 
                     $expression->transition(
-                        ['integer', 'double', 'identifier'],
+                        ['integer', 'double', 'identifier', 'string_concat', 'comment'],
                         ['uoperator', 'boperator', 'punctuation']
                     );
                 })
@@ -124,33 +134,50 @@ class Lexer
                     $debug->type('special (checking)');
 
                     if ($symbol->like('.')) {
-                        if ($expression->transition(['double_point'], [], true) ) {                        
+                        if ($expression->transition(
+                            ['double_point'], [], true
+                        )) {
                             $symbol->skip(); // skip other compares, to the next symbol
                         }
                     } else if ($symbol->like('$')) {
-                        $result = $expression->transition(
-                            ['identifier_dollar'],
+                        $expression->transition(
+                            ['identifier_dollar', 'string_concat', 'comment'],
                             ['punctuation', 'uoperator', 'boperator'], false
                         );
+                    } else if ($symbol->like('/')) {
+                        if ($expression->transition(
+                            ['comment_start'], [], true
+                        )) {
+                            $symbol->skip(); // skip other compares, to the next symbol
+                        }
                     }
                 })
                 ->is(T_OPERATOR, function() use($debug, $expression) {
                     $debug->type('operator');
 
                     $expression->transition(
-                        ['uoperator', 'boperator'],
-                        ['integer', 'double', 'identifier', 'variable', 'punctuation']
+                        ['uoperator', 'boperator', 'string_concat', 'comment'],
+                        ['integer', 'double', 'identifier', 'variable', 'punctuation', 'string']
                     );
                 })
                 ->is(T_PUNCTUATION, function() use($debug, $expression) {
                     $debug->type('punctuation');
 
                     $expression->transition(
-                        ['punctuation'],
-                        ['integer', 'double', 'identifier', 'variable', 'punctuation', 'uoperator', 'boperator']
+                        ['punctuation', 'string_concat', 'comment'],
+                        ['integer', 'double', 'identifier', 'variable', 'punctuation', 'uoperator', 'boperator', 'string']
+                    );
+                })
+                ->is(T_STRING, function() use($debug, $expression) {
+                    $debug->type('string');
+
+                    $expression->transition(
+                        ['string_start', 'string_finish', 'comment'],
+                        ['punctuation', 'uoperator', 'boperator']
                     );
                 })
                 ->is(T_ALL, function($iteration) use($debug, $expression, $symbol) {
+                    $debug->value($symbol);
                     $debug->finish($iteration, $expression);
 
                     $expression->add($symbol);
