@@ -1,7 +1,7 @@
 <?php
 
 class foo {
-private $a;
+private $a$d;
 }
 
 class bar extends foo {
